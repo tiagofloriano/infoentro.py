@@ -22,30 +22,59 @@ License:
 
 import numpy as np
 import pandas as pd
-import collections
+import collections,os
 import matplotlib.pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
 
-def calculate_entropy(time_series):
-    n = len(time_series)
-    counter = collections.Counter(time_series)
-    probabilities = [count / n for count in counter.values()]
-    entropy = -sum(p * np.log2(p) for p in probabilities)
-    return entropy
+# calculo da entropia
+def calcular_entropia(conteudo):
+    n = len(conteudo)
+    contador = collections.Counter(conteudo)
+    probabilities = [count / n for count in contador.values()]
+    entropia = -sum(p * np.log2(p) for p in probabilities)
+    return entropia
 
-time_series = [4, 5, 6, 5, 4, 5, 6]
+# definições
+infodir = input("Informe o diretório onde estão os arquivos MRT: ")
+diretorio = "{}/".format(infodir)
+resultados =[] # lista de resultados
 
-entropy = calculate_entropy(time_series)
-print("Information Entropy:", entropy)
+# LISTAR ARQUIVOS DO DIRETÓRIO
+arquivos = os.listdir(diretorio)
 
-data = pd.Series(time_series)
+# Exibir os nomes dos arquivos
+for arquivo in arquivos:
+    caminho_arquivo = diretorio+arquivo
 
-model = ARIMA(data, order=(1, 1, 1))
+    # Abra o arquivo em modo de leitura ('r')
+    with open(caminho_arquivo, 'r') as arquivo:
+        # Leia o conteúdo do arquivo
+        conteudo = arquivo.read()
 
-fit_model = model.fit()
+        # TRATAMENTO DO CONTEÚDO DO ARQUIVO
+        # filtrar conteudo do arquivo para usar apenas os resultados
+        conteudo = conteudo.split('IDEOS-PIPELINE-LOG-FILE-END')
 
-steps=4
-forecast = fit_model.forecast(steps)
+        # remover caracteres desnecessários da filtragem anterior 
+        remover = "#-" 
+        conteudo = ''.join(char for char in conteudo[1] if char not in remover)
 
-print("Prediction for the next {} numbers:".format(steps))
-print(forecast)
+        # filtrar apenas a segunda coluna
+        linhas = conteudo.strip().split('\n')
+        conteudo = [linha.split()[1] for linha in linhas]
+    
+    # inserir resultados na lista
+    resultados.append(round(calcular_entropia(conteudo),2))
+    
+# MONTAR GRÁFICO
+posicoes = range(len(resultados))
+
+# Criar o gráfico de barras
+plt.bar(posicoes, resultados, align='center', alpha=0.7, color='blue')
+plt.xticks(posicoes, resultados)  # Define os números no eixo x
+plt.xlabel('Números')
+plt.ylabel('Valores')
+plt.title('Entropia da informação')
+
+# Mostrar o gráfico
+plt.show()
