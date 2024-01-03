@@ -25,6 +25,8 @@ import pandas as pd
 import collections,os
 import matplotlib.pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
+from scipy.interpolate import make_interp_spline
+import scipy
 
 # calculo da entropia
 def calcular_entropia(conteudo):
@@ -36,44 +38,53 @@ def calcular_entropia(conteudo):
 
 # definições
 infodir = input("Informe o diretório onde estão os arquivos MRT: ")
-diretorio = "{}/".format(infodir)
+arquivo = input("Informe o nome do arquivo: ")
 resultados =[] # lista de resultados
 
-# LISTAR ARQUIVOS DO DIRETÓRIO
-arquivos = os.listdir(diretorio)
+caminho_arquivo = "{}/{}".format(infodir,arquivo)
 
-# Exibir os nomes dos arquivos
-for arquivo in arquivos:
-    caminho_arquivo = diretorio+arquivo
+# Abra o arquivo em modo de leitura ('r')
+with open(caminho_arquivo, 'r') as arquivo:
+    # Leia o conteúdo do arquivo
+    conteudo = arquivo.read()
 
-    # Abra o arquivo em modo de leitura ('r')
-    with open(caminho_arquivo, 'r') as arquivo:
-        # Leia o conteúdo do arquivo
-        conteudo = arquivo.read()
+    # TRATAMENTO DO CONTEÚDO DO ARQUIVO
+    # filtrar conteudo do arquivo para usar apenas os resultados
+    conteudo = conteudo.split('IDEOS-PIPELINE-LOG-FILE-END')
 
-        # TRATAMENTO DO CONTEÚDO DO ARQUIVO
-        # filtrar conteudo do arquivo para usar apenas os resultados
-        conteudo = conteudo.split('IDEOS-PIPELINE-LOG-FILE-END')
+    # remover caracteres desnecessários da filtragem anterior 
+    remover = "#-" 
+    conteudo = ''.join(char for char in conteudo[1] if char not in remover)
 
-        # remover caracteres desnecessários da filtragem anterior 
-        remover = "#-" 
-        conteudo = ''.join(char for char in conteudo[1] if char not in remover)
+    # filtrar apenas a segunda coluna
+    linhas = conteudo.strip().split('\n')
+    conteudo_col1 = [linha.split()[0] for linha in linhas]
+    conteudo_col2 = [linha.split()[1] for linha in linhas]
+    for calc_entro in conteudo_col2:
+        # inserir resultados na lista
+        resultados.append(round(calcular_entropia(calc_entro),3))
 
-        # filtrar apenas a segunda coluna
-        linhas = conteudo.strip().split('\n')
-        conteudo = [linha.split()[1] for linha in linhas]
-    
-    # inserir resultados na lista
-    resultados.append(round(calcular_entropia(conteudo),2))
     
 # MONTAR GRÁFICO
-posicoes = range(len(resultados))
+tipograf = input("Tipo de gráfico: [1] barras [2] linhas")
 
-# Criar o gráfico de barras
-plt.bar(posicoes, resultados, align='center', alpha=0.7, color='blue')
-plt.xticks(posicoes, resultados)  # Define os números no eixo x
-plt.xlabel('Números')
-plt.ylabel('Valores')
+if tipograf == "1":
+    # Criar o gráfico de barras
+    plt.bar(conteudo_col1, resultados, align='center', alpha=0.7, color='blue')
+    plt.xticks(conteudo_col1, resultados)  # Define os números no eixo x
+elif tipograf == "2":
+    # Criar a curva spline
+    x = np.linspace(float(conteudo_col1[0]), float(conteudo_col1[-1]), 2000)
+    #x = np.linspace(conteudo_col1.index(conteudo_col1[0]), conteudo_col1.index(conteudo_col1[-1]), 50)
+    y = scipy.interpolate.make_interp_spline(conteudo_col1, resultados, k=2)(x)
+
+    # Criar o gráfico de linhas suaves
+    plt.plot(x, y, color='blue')
+
+conteudo_col1_numerico = [float(x) for x in conteudo_col1]
+plt.xticks(conteudo_col1_numerico, resultados)  # Define os números no eixo x
+plt.xlabel('Col1')
+plt.ylabel('Col2')
 plt.title('Entropia da informação')
 
 # Mostrar o gráfico
